@@ -10,7 +10,9 @@
 		"dev": "bun run --watch app.ts",
 		"start": "NODE_ENV=production bun ./build/app.js",
 		"build": "bun build --minify-whitespace --minify-syntax --target bun --outfile ./build/app.js app.ts",
-		"test": "bun test"
+		"test": "bun test",
+		"sharp-install": "npm install --platform=linux --arch=arm64 sharp",
+		"postinstall": "npm run sharp-install"
 	},
 	"dependencies": {
 		"@elysiajs/cors": "^1.1.1",
@@ -24,10 +26,5 @@
 	"devDependencies": {
 		"@types/node": "latest",
 		"bun-types": "latest"
-	},
-	"config": {
-		"npm_config_arch": "arm64",
-		"npm_config_platform": "linux",
-		"npm_config_libc": "glibc"
 	}
 }
