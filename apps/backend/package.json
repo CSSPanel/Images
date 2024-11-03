@@ -9,10 +9,7 @@
 	"scripts": {
 		"dev": "bun run --watch app.ts",
 		"start": "NODE_ENV=production bun ./build/app.js",
-		"build": "bun build --minify-whitespace --minify-syntax --target bun --outfile ./build/app.js app.ts",
-		"test": "bun test",
-		"sharp-install": "bun install --platform=linux --arch=arm64 sharp",
-		"postinstall": "bun run sharp-install"
+		"build": "bun build --minify-whitespace --minify-syntax --target bun --outfile ./build/app.js app.ts"
 	},
 	"dependencies": {
 		"@elysiajs/cors": "^1.1.1",
@@ -21,7 +18,7 @@
 		"@elysiajs/swagger": "^1.1.5",
 		"elysia-compress": "^1.2.1",
 		"logestic": "^1.2.4",
-		"sharp": "^0.33.5"
+		"sharp": "0.32.6"
 	},
 	"devDependencies": {
 		"@types/node": "latest",
