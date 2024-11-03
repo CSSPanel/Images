@@ -103,9 +103,9 @@ const AdminRoutes = new Elysia({
 					return new Response('Invalid image name', { status: 400 })
 				}
 
-				const PATH = `${Bun.env.FILES_PATH}/temp/${decodedImage}`
-				console.log({ PATH })
-				await unlink(PATH)
+				// const PATH = `${Bun.env.FILES_PATH}/temp/${decodedImage}`
+				console.log({ decodedImage })
+				await unlink(decodedImage)
 
 				return true
 			} catch (err) {
