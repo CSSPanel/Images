@@ -17,7 +17,7 @@ const UploadRoutes = new Elysia({
 				const decoded = Buffer.from(file, 'base64')
 				const newFile = await sharp(decoded).webp().resize(800).toBuffer()
 
-				await Bun.write(`apps/backend/uploads/temp/${currentTime}${IMAGE_SPLITER}${name}.webp`, newFile)
+				await Bun.write(`${Bun.env.FILES_PATH}/temp/${currentTime}${IMAGE_SPLITER}${name}.webp`, newFile)
 			}
 
 			return true

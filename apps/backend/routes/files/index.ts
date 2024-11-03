@@ -12,7 +12,7 @@ const FilesRoutes = new Elysia({
 		async ({ error }) => {
 			try {
 				// Get all the pending images from '/uploads/temp'
-				const glob = new Glob('apps/backend/uploads/*.webp')
+				const glob = new Glob(`${Bun.env.FILES_PATH}/*.webp`)
 				const files: { name: string; fileName: string }[] = []
 
 				for await (const file of glob.scan('.')) {
@@ -47,7 +47,7 @@ const FilesRoutes = new Elysia({
 					return new Response('Invalid image name', { status: 400 })
 				}
 
-				const PATH = `apps/backend/uploads/${decodedImage}`
+				const PATH = `${Bun.env.FILES_PATH}/${decodedImage}`
 				const imageBuffer = await sharp(PATH).resize({ width: selectedWidth }).toBuffer()
 
 				return imageBuffer
