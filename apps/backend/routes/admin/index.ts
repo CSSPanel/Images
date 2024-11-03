@@ -103,7 +103,7 @@ const AdminRoutes = new Elysia({
 					return new Response('Invalid image name', { status: 400 })
 				}
 
-				const PATH = `${Bun.env.FILES_PATH}/temp/${decodedImage}.webp`
+				const PATH = `${Bun.env.FILES_PATH}/temp/${decodedImage}`
 				console.log({ PATH })
 				await unlink(PATH)
 
@@ -128,24 +128,37 @@ const AdminRoutes = new Elysia({
 			try {
 				// Get all the pending images from '/uploads/temp'
 				const glob = new Glob(`${Bun.env.FILES_PATH}/temp/*.webp`)
-				const files: { timestamp: number; name: string; fileName: string }[] = []
+				const files: { timestamp: number; name: string; fileName: string; fileNameWithoutLeading: string }[] = []
 
 				for await (const file of glob.scan('.')) {
 					const [timeStr, name] = file.split(IMAGE_SPLITER)
 					if (!timeStr || !name) continue
 
-					// Get only the timestamp from the string (uploads\\temp\\1730563395222)
-					const timestamp = Number.parseInt(timeStr.split('\\').pop() || '0')
+					// Get only the timestamp from the string (uploads/temp/1730563395222)
+					const timestamp = Number.parseInt(timeStr.split('/').pop() || '0')
+
+					/* {
+					[0]   timeStr: "/apps/backend/uploads/temp/1730661050955",
+					[0]   name: "asdasd.webp",
+					[0]   timestamp: NaN,
+					[0]   newName: "asdasd",
+					[0]   fileName: "/apps/backend/uploads/temp/1730661050955-----asdasd.webp",
+					[0] } */
+
+					const newName = name.replace('.webp', '')
+					const fileName = file.split('/').pop() || ''
+					const fileNameWithoutLeading = fileName.replace(Bun.env.FILES_PATH as string, '')
 
 					console.log({
 						timeStr,
 						name,
 						timestamp,
 						newName: name.replace('.webp', ''),
-						fileName: file.split('\\').pop() || '',
+						fileName,
+						fileNameWithoutLeading,
 					})
 
-					files.push({ timestamp, name: name.replace('.webp', ''), fileName: file.split('\\').pop() || '' })
+					files.push({ timestamp, name: newName, fileName, fileNameWithoutLeading })
 				}
 
 				return files

@@ -16,7 +16,7 @@ const FilesRoutes = new Elysia({
 				const files: { name: string; fileName: string }[] = []
 
 				for await (const file of glob.scan('.')) {
-					files.push({ name: file.replace('.webp', ''), fileName: file.split('\\').pop() || '' })
+					files.push({ name: file.replace('.webp', ''), fileName: file.split('/').pop() || '' })
 				}
 
 				return files
