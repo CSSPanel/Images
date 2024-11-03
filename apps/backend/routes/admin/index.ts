@@ -59,11 +59,13 @@ const AdminRoutes = new Elysia({
 					return new Response('Invalid image name', { status: 400 })
 				}
 
+				console.log({ decodedImage, name })
+
 				const PATH = `${Bun.env.FILES_PATH}/temp/${decodedImage}`
 				const file = Bun.file(PATH)
 
 				// Remove the current file if there is a file with the same name
-				await unlink(`${Bun.env.FILES_PATH}/${name}.webp`)
+				await unlink(`${Bun.env.FILES_PATH}/${name}.webp`).catch(() => {})
 
 				// Move the file to the '/uploads' folder
 				await Bun.write(`${Bun.env.FILES_PATH}/${name}.webp`, file)
