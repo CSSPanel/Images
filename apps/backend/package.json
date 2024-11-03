@@ -8,8 +8,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "bun run --watch app.ts",
-		"start": "NODE_ENV=production bun server.exe",
-		"build": "bun build --compile --minify --target bun --outfile server app.ts",
+		"start": "NODE_ENV=production bun ./build/app.js",
+		"build": "bun build --minify-whitespace --minify-syntax --target bun --outfile ./build/app.js app.ts",
 		"test": "bun test"
 	},
 	"dependencies": {
