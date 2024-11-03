@@ -22,8 +22,8 @@ export const handleApproveImage = async (image: string, name: string) => {
 	if (error) throw error
 }
 
-export const handleDeleteImage = async (image: string, name: string) => {
-	const { error } = await eden.admin({ image }).delete({ name })
+export const handleDeleteImage = async (image: string) => {
+	const { error } = await eden.admin({ image }).delete()
 	if (error) throw error
 }
 

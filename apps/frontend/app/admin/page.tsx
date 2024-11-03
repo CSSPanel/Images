@@ -71,7 +71,7 @@ const Image = ({
 				color="red"
 				onClick={() => {
 					setIsLoading(true)
-					handleDeleteImage(fileName, name)
+					handleDeleteImage(name)
 						.then(() => {
 							mutate('pending-images')
 							setIsApproving(false)
