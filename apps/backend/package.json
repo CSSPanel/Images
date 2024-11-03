@@ -24,5 +24,10 @@
 	"devDependencies": {
 		"@types/node": "latest",
 		"bun-types": "latest"
+	},
+	"config": {
+		"npm_config_arch": "arm64",
+		"npm_config_platform": "linux",
+		"npm_config_libc": "glibc"
 	}
 }
