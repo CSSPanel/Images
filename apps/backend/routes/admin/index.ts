@@ -22,12 +22,12 @@ const AdminRoutes = new Elysia({
 				} catch (uriError) {
 					console.error('Failed to decode URI:', uriError, image)
 					// Remove the file if it's invalid
-					await unlink(`uploads/temp/${image}`)
+					await unlink(`apps/backend/uploads/temp/${image}`)
 
 					return new Response('Invalid image name', { status: 400 })
 				}
 
-				const PATH = `uploads/temp/${decodedImage}`
+				const PATH = `apps/backend/uploads/temp/${decodedImage}`
 				const imageBuffer = await sharp(PATH).toBuffer()
 
 				return imageBuffer
@@ -59,14 +59,14 @@ const AdminRoutes = new Elysia({
 					return new Response('Invalid image name', { status: 400 })
 				}
 
-				const PATH = `uploads/temp/${decodedImage}`
+				const PATH = `apps/backend/uploads/temp/${decodedImage}`
 				const file = Bun.file(PATH)
 
 				// Remove the current file if there is a file with the same name
-				await unlink(`uploads/${name}.webp`)
+				await unlink(`apps/backend/uploads/${name}.webp`)
 
 				// Move the file to the '/uploads' folder
-				await Bun.write(`uploads/${name}.webp`, file)
+				await Bun.write(`apps/backend/uploads/${name}.webp`, file)
 
 				// Remove the original file
 				await unlink(PATH)
@@ -103,7 +103,7 @@ const AdminRoutes = new Elysia({
 					return new Response('Invalid image name', { status: 400 })
 				}
 
-				const PATH = `uploads/temp/${decodedImage}`
+				const PATH = `apps/backend/uploads/temp/${decodedImage}`
 				await unlink(PATH)
 
 				return true
@@ -126,7 +126,7 @@ const AdminRoutes = new Elysia({
 		async ({ error }) => {
 			try {
 				// Get all the pending images from '/uploads/temp'
-				const glob = new Glob('uploads/temp/*.webp')
+				const glob = new Glob('apps/backend/uploads/temp/*.webp')
 				const files: { timestamp: number; name: string; fileName: string }[] = []
 
 				for await (const file of glob.scan('.')) {
