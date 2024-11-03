@@ -26,8 +26,8 @@ const app = new Elysia()
 	.use(jtwSetup)
 	.use(routes)
 	.get('/', () => redirect('/docs'))
-	.listen(Bun.env.PORT || 6000, () => {
-		console.log(`🦊 Server is running on port ${Bun.env.PORT || 6000}`)
+	.listen(Bun.env.API_PORT || 6000, () => {
+		console.log(`🦊 Server is running on port ${Bun.env.API_PORT || 6000}`)
 	})
 
 if (Bun.env.NODE_ENV === 'production') {

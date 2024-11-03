@@ -8,7 +8,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "bun run --watch app.ts",
-		"start": "NODE_ENV=production bun app.ts",
+		"start": "NODE_ENV=production bun server.exe",
 		"build": "bun build --compile --minify --target bun --outfile server app.ts",
 		"test": "bun test"
 	},
