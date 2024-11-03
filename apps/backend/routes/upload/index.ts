@@ -1,5 +1,5 @@
 import Elysia, { t } from 'elysia'
-import { IMAGE_SPLITER } from '~/utils/constants/Files'
+import { IMAGE_SPLITER } from '../../utils/constants/Files'
 import sharp from 'sharp'
 
 const UploadRoutes = new Elysia({

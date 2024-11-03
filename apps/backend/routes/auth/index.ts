@@ -1,5 +1,5 @@
 import Elysia, { error, t } from 'elysia'
-import { WEBSITE_URL_WITHOUT_SSL } from '~/utils/constants/Domain'
+import { WEBSITE_URL_WITHOUT_SSL } from '../../utils/constants/Domain'
 import jtwSetup from '../../utils/lib/jwt'
 
 const AuthRoutes = new Elysia({

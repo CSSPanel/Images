@@ -1,8 +1,8 @@
 import Elysia, { t } from 'elysia'
-import { IMAGE_SPLITER } from '~/utils/constants/Files'
+import { IMAGE_SPLITER } from '../../utils/constants/Files'
 import { unlink } from 'node:fs/promises'
 import { Glob } from 'bun'
-import isAdmin from '~/middlewares/isAdmin'
+import isAdmin from '../../middlewares/isAdmin'
 import sharp from 'sharp'
 
 const AdminRoutes = new Elysia({

@@ -1,5 +1,5 @@
 import type { Elysia } from 'elysia'
-import jwtSetup from '~/utils/lib/jwt'
+import jwtSetup from '../utils/lib/jwt'
 
 export const isAdmin = (app: Elysia) =>
 	app.use(jwtSetup).derive(async ({ jwt, cookie: { auth }, error }) => {
