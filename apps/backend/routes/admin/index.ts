@@ -134,10 +134,16 @@ const AdminRoutes = new Elysia({
 					const [timeStr, name] = file.split(IMAGE_SPLITER)
 					if (!timeStr || !name) continue
 
-					console.log({ timeStr, name })
-
 					// Get only the timestamp from the string (uploads\\temp\\1730563395222)
 					const timestamp = Number.parseInt(timeStr.split('\\').pop() || '0')
+
+					console.log({
+						timeStr,
+						name,
+						timestamp,
+						newName: name.replace('.webp', ''),
+						fileName: file.split('\\').pop() || '',
+					})
 
 					files.push({ timestamp, name: name.replace('.webp', ''), fileName: file.split('\\').pop() || '' })
 				}
