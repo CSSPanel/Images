@@ -47,8 +47,7 @@ const Home = () => {
 			setUploadedFiles([])
 
 			setShowAlert({
-				message:
-					'Images uploaded successfully, please wait for a confirmation form the admins in order to use the images',
+				message: 'Images uploaded successfully, please wait for a confirmation from the admins. Thank you!',
 				type: 'green',
 			})
 		} catch (err) {
