@@ -1,0 +1,28 @@
+{
+	"name": "backend",
+	"version": "1.0.0",
+	"main": "./app.ts",
+	"module": "app.ts",
+	"packageManager": "bun@1.1.17",
+	"private": "true",
+	"type": "module",
+	"scripts": {
+		"dev": "bun run --watch app.ts",
+		"start": "NODE_ENV=production bun app.ts",
+		"build": "bun build --compile --minify --target bun --outfile server app.ts",
+		"test": "bun test"
+	},
+	"dependencies": {
+		"@elysiajs/cors": "^1.1.1",
+		"@elysiajs/cron": "^1.1.1",
+		"@elysiajs/jwt": "^1.1.1",
+		"@elysiajs/swagger": "^1.1.5",
+		"elysia-compress": "^1.2.1",
+		"logestic": "^1.2.4",
+		"sharp": "^0.33.5"
+	},
+	"devDependencies": {
+		"@types/node": "latest",
+		"bun-types": "latest"
+	}
+}

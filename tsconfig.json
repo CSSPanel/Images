@@ -1,0 +1,39 @@
+{
+	"compilerOptions": {
+		"module": "esnext",
+		"target": "es2020",
+		"lib": ["ESNext"],
+		"moduleDetection": "force",
+		"allowImportingTsExtensions": true,
+		"noEmit": true,
+		"strict": true,
+		"downlevelIteration": true,
+		"skipLibCheck": true,
+		"jsx": "react-jsx",
+		"allowSyntheticDefaultImports": true,
+		"forceConsistentCasingInFileNames": true,
+		"allowJs": true,
+		"types": [
+			"bun-types" // add Bun global
+		],
+		"baseUrl": ".",
+		"rootDir": ".",
+		"paths": {
+			// @/ = Frontend
+			"@/*": ["./apps/frontend/*"],
+			"@/func/*": ["./apps/frontend/utils/functions/*"],
+			"@/hooks/*": ["./apps/frontend/utils/hooks/*"],
+			// ~/ = Backend
+			"~/*": ["./apps/backend/*"],
+			"~/lib/*": ["./apps/backend/utils/lib/*"],
+			"~/middlewares/*": ["./apps/backend/middlewares/*"]
+		},
+		"esModuleInterop": true,
+		"moduleResolution": "Node",
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"incremental": true
+	},
+	"include": ["next-env.d.ts", ".next/types/**/*.ts", "./**/*.ts", "./**/*.tsx"],
+	"exclude": [".next/**/*", "**/node_modules"]
+}
