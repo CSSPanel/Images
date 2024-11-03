@@ -1,6 +1,6 @@
 {
 	"name": "file-uploads",
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"description": "Elysia Backend + Next.js",
 	"packageManager": "bun@1.1.12",
 	"private": true,
