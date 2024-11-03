@@ -104,6 +104,7 @@ const AdminRoutes = new Elysia({
 				}
 
 				const PATH = `${Bun.env.FILES_PATH}/temp/${decodedImage}`
+				console.log({ PATH })
 				await unlink(PATH)
 
 				return true
