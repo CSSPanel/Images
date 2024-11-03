@@ -18,12 +18,10 @@
 		"@elysiajs/jwt": "^1.1.1",
 		"@elysiajs/swagger": "^1.1.5",
 		"elysia-compress": "^1.2.1",
-		"logestic": "^1.2.4",
-		"sharp": "latest"
+		"logestic": "^1.2.4"
 	},
 	"devDependencies": {
 		"@types/node": "latest",
-		"@types/sharp": "latest",
 		"bun-types": "latest"
 	}
 }
