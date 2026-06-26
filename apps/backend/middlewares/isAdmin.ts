@@ -1,8 +1,9 @@
-import type { Elysia } from 'elysia'
+import { Elysia } from 'elysia'
 import jwtSetup from '../utils/lib/jwt'
 
-export const isAdmin = (app: Elysia) =>
-	app.use(jwtSetup).derive(async ({ jwt, cookie: { auth }, error }) => {
+export const isAdmin = new Elysia({ name: 'isAdmin' })
+	.use(jwtSetup)
+	.derive(async ({ jwt, cookie: { auth }, error }) => {
 		try {
 			const isLoggedIn = await jwt.verify(auth.value)
 			if (!isLoggedIn) {
