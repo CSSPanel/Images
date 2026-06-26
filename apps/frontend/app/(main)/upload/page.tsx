@@ -61,7 +61,7 @@ const Upload = () => {
 			const lines: { key: string; text: string }[] = []
 			if (pending.length) lines.push({ key: 'pending', text: `✓ ${pending.length} submitted for review` })
 			if (skipped.length) lines.push({ key: 'skipped', text: `↷ ${skipped.length} skipped (already exist)` })
-			for (const [reason, count] of rejectedByReason) {
+			for (const [reason, count] of Array.from(rejectedByReason)) {
 				lines.push({ key: `rejected-${reason}`, text: `✕ ${count} rejected — ${reason}` })
 			}
 
