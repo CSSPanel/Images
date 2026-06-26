@@ -37,6 +37,10 @@
 		"bytes": "^3.1.2",
 		"sharp": "^0.33.5"
 	},
+	"optionalDependencies": {
+		"@img/sharp-linux-arm64": "0.33.5",
+		"@img/sharp-libvips-linux-arm64": "1.0.4"
+	},
 	"engines": {
 		"npm": "Please use Bun",
 		"yarn": "Please use Bun",
