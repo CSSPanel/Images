@@ -1,0 +1,8 @@
+# Force the build to install exactly what's in bun.lockb instead of
+# re-resolving "^" ranges. Without this, the remote build drifts to newer
+# Elysia-family majors than we run locally, causing type errors that only
+# appear in the Docker/Nixpacks build (e.g. context `error`->`status`, missing
+# `jwt` decorator). --frozen-lockfile fails loudly if package.json and the
+# lockfile disagree, instead of silently upgrading.
+[phases.install]
+cmds = ["bun install --frozen-lockfile"]
