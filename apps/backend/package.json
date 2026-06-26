@@ -18,7 +18,9 @@
 		"@elysiajs/jwt": "^1.1.1",
 		"@elysiajs/swagger": "^1.1.5",
 		"elysia-compress": "^1.2.1",
-		"logestic": "^1.2.4"
+		"logestic": "^1.2.4",
+		"@aws-sdk/client-s3": "^3.864.0",
+		"@aws-sdk/s3-request-presigner": "^3.864.0"
 	},
 	"devDependencies": {
 		"@types/node": "latest",

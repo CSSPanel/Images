@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp /private/tmp/claude-501/-Users-amir-Projects-Next-il-Images/c8ec9d6e-9927-407e-bba3-471e808390dd/scratchpad/sharp_test.ts /Users/amir/Projects/Next-il/Images/apps/backend/_sharp_test.ts)",
+      "Bash(rm -f /Users/amir/Projects/Next-il/Images/apps/backend/_sharp_test.ts)",
+      "Bash(curl -s -w \"\\\\n[HTTP %{http_code}]\\\\n\" http://localhost:5555/maps)",
+      "Bash(curl -s -o /dev/null -w \"[HTTP %{http_code}]\\\\n\" http://localhost:5555/maps/__nope__)",
+      "Bash(curl -s -o /dev/null -w \"[HTTP %{http_code}]\\\\n\" \"http://localhost:5555/maps/__nope__?fallback=__alsonope__\")",
+      "Bash(curl -s -o /dev/null -w \"[HTTP %{http_code}]\\\\n\" http://localhost:5555/admin/pending)",
+      "Bash(curl -s -o /dev/null -w \"[HTTP %{http_code}] -> %{redirect_url}\\\\n\" http://localhost:5555/)",
+      "Bash(curl -s -D - -o /private/tmp/claude-501/-Users-amir-Projects-Next-il-Images/c8ec9d6e-9927-407e-bba3-471e808390dd/scratchpad/o1.webp http://localhost:5555/maps/__TRACKED_VAR__?width=300)",
+      "Bash(kill 5229)",
+      "Bash(lsof -nP -iTCP:5555 -sTCP:LISTEN)",
+      "Bash(awk 'NR>1{print \"still listening: PID \"$2}')",
+      "Bash(bunx biome *)",
+      "Bash(echo \"=== biome exit: $? ===\")",
+      "Bash(echo \"=== exit: $? ===\")",
+      "Bash(curl -s -m 8 -w \"\\\\n[HTTP %{http_code}] time=%{time_total}s\\\\n\" http://localhost:5555/maps)",
+      "Bash(curl -s -m 8 -o /dev/null -w \"[HTTP %{http_code}] ct=%{content_type} size=%{size_download}B time=%{time_total}s\\\\n\" \"http://localhost:5555/maps/de_dust2?width=400\")",
+      "Bash(curl -s -m 8 -o /dev/null -w \"[HTTP %{http_code}] time=%{time_total}s\\\\n\" http://localhost:5555/maps/__ping__)",
+      "Bash(curl -s -D - -o /dev/null \"http://localhost:5555/maps/de_dust2?width=400\" -H \"Accept: image/avif,image/webp,image/*,*/*\" -H \"Accept-Encoding: gzip, deflate, br\")",
+      "Bash(curl -s -D - -o /dev/null \"http://localhost:5555/maps\")"
+    ]
+  }
+}

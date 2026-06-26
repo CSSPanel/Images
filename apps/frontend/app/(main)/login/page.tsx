@@ -1,9 +1,11 @@
 'use client'
 
 import eden from '@/utils/eden'
+import useAuth from '@/utils/useAuth'
 import { Button, TextInput } from '@mantine/core'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { mutate } from 'swr'
 
 const AdminPage = () => {
 	const [username, setUsername] = useState('')
@@ -11,6 +13,12 @@ const AdminPage = () => {
 	const [isLoading, setIsLoading] = useState(false)
 
 	const router = useRouter()
+
+	// Already logged in? Skip the form and go straight to the admin panel.
+	const { data: isLoggedIn } = useAuth()
+	useEffect(() => {
+		if (isLoggedIn) router.replace('/admin')
+	}, [isLoggedIn, router])
 
 	const handleSubmit = async () => {
 		if (isLoading) return
@@ -23,6 +31,8 @@ const AdminPage = () => {
 			}
 
 			if (data) {
+				// Prime the auth cache so /admin doesn't read a stale "logged out" value.
+				mutate('auth-me', true, false)
 				router.push('/admin')
 			}
 		} catch (err) {

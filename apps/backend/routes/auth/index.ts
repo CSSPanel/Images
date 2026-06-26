@@ -41,5 +41,26 @@ const AuthRoutes = new Elysia({
 			}),
 		},
 	)
+	.get(
+		'/me',
+		async ({ jwt, cookie: { auth } }) => {
+			const isLoggedIn = await jwt.verify(auth.value)
+			if (!isLoggedIn) return error(401, 'Unauthorized')
+
+			const { username, password } = isLoggedIn
+
+			if (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD) {
+				auth.set({ value: '', expires: new Date(0) })
+				return error(401, 'Unauthorized')
+			}
+
+			return true
+		},
+		{
+			detail: {
+				summary: 'Check whether the current session is authenticated',
+			},
+		},
+	)
 
 export default AuthRoutes

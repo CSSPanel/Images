@@ -1,9 +1,9 @@
 import Elysia, { t } from 'elysia'
-import { IMAGE_SPLITER } from '../../utils/constants/Files'
-import { unlink } from 'node:fs/promises'
-import { Glob } from 'bun'
 import isAdmin from '../../middlewares/isAdmin'
-import sharp from 'sharp'
+import { IMAGE_SPLITER, PENDING_PREFIX } from '../../utils/constants/Files'
+import { normalizeMapName } from '../../utils/lib/mapName'
+import { DeleteR2File } from '../../utils/lib/r2/delete'
+import { copyObject, getObjectBuffer, listKeys } from '../../utils/lib/r2/get'
 
 const AdminRoutes = new Elysia({
 	detail: {
@@ -12,25 +12,54 @@ const AdminRoutes = new Elysia({
 })
 	.use(isAdmin)
 	.get(
-		'/:image',
-		async ({ params: { image }, error }) => {
+		'/pending',
+		async ({ error }) => {
 			try {
-				let decodedImage: string
+				// List uploads awaiting approval (pending/{timestamp}-----{name}.webp).
+				const objects = await listKeys(PENDING_PREFIX)
 
-				try {
-					decodedImage = decodeURIComponent(image)
-				} catch (uriError) {
-					console.error('Failed to decode URI:', uriError, image)
-					// Remove the file if it's invalid
-					await unlink(`${Bun.env.FILES_PATH}/temp/${image}`)
+				const files = objects
+					.map(o => {
+						const [timeStr, namePart] = o.name.split(IMAGE_SPLITER)
+						if (!timeStr || !namePart) return null
 
-					return new Response('Invalid image name', { status: 400 })
+						return {
+							timestamp: Number.parseInt(timeStr) || 0,
+							name: namePart.replace('.webp', ''),
+							// Key without the pending/ prefix — used by the other admin routes.
+							fileName: o.name,
+						}
+					})
+					.filter((f): f is NonNullable<typeof f> => f !== null)
+					.sort((a, b) => b.timestamp - a.timestamp)
+
+				return files
+			} catch (err) {
+				console.error(err)
+				return error(500, err)
+			}
+		},
+		{
+			detail: {
+				summary: 'Get all pending images',
+			},
+		},
+	)
+	.get(
+		'/:image',
+		async ({ params: { image }, set, error }) => {
+			try {
+				const object = await getObjectBuffer(`${PENDING_PREFIX}${image}`)
+				if (!object) {
+					set.status = 404
+					return 'Not found'
 				}
 
-				const PATH = `${Bun.env.FILES_PATH}/temp/${decodedImage}`
-				const imageBuffer = await sharp(PATH).toBuffer()
-
-				return imageBuffer
+				// Return a typed Blob: elysia-compress detects image/webp as
+				// non-compressible and passes it through untouched. Returning a raw
+				// buffer instead gets mis-detected as text and Brotli-compressed,
+				// which mangles the Content-Type; a bare `new Response` is emptied.
+				return new Blob([object.body], { type: 'image/webp' })
 			} catch (err) {
 				console.error(err)
 				return error(500, err)
@@ -49,29 +78,18 @@ const AdminRoutes = new Elysia({
 		'/:image',
 		async ({ params: { image }, body: { name }, error }) => {
 			try {
-				// Approve the image by moving it to the '/uploads' folder
-				let decodedImage: string
+				const mapName = normalizeMapName(name)
+				if (!mapName) return new Response('Invalid name', { status: 400 })
 
-				try {
-					decodedImage = decodeURIComponent(image)
-				} catch (uriError) {
-					console.error('Failed to decode URI:', uriError, image)
-					return new Response('Invalid image name', { status: 400 })
-				}
+				const src = `${PENDING_PREFIX}${image}`
 
-				console.log({ decodedImage, name })
+				// Make sure the pending object still exists before approving.
+				const object = await getObjectBuffer(src)
+				if (!object) return new Response('Pending image not found', { status: 404 })
 
-				const PATH = `${Bun.env.FILES_PATH}/temp/${decodedImage}`
-				const file = Bun.file(PATH)
-
-				// Remove the current file if there is a file with the same name
-				await unlink(`${Bun.env.FILES_PATH}/${name}.webp`).catch(() => {})
-
-				// Move the file to the '/uploads' folder
-				await Bun.write(`${Bun.env.FILES_PATH}/${name}.webp`, file)
-
-				// Remove the original file
-				await unlink(PATH)
+				// Approve = copy to the bucket root as {name}.webp, then drop the pending object.
+				await copyObject(src, `${mapName}.webp`)
+				await DeleteR2File(src)
 
 				return true
 			} catch (err) {
@@ -95,20 +113,7 @@ const AdminRoutes = new Elysia({
 		'/:image',
 		async ({ params: { image }, error }) => {
 			try {
-				// Approve the image by moving it to the '/uploads' folder
-				let decodedImage: string
-
-				try {
-					decodedImage = decodeURIComponent(image)
-				} catch (uriError) {
-					console.error('Failed to decode URI:', uriError, image)
-					return new Response('Invalid image name', { status: 400 })
-				}
-
-				const PATH = `${Bun.env.FILES_PATH}/temp/${decodedImage}`
-				console.log({ PATH })
-				await unlink(PATH)
-
+				await DeleteR2File(`${PENDING_PREFIX}${image}`)
 				return true
 			} catch (err) {
 				console.error(err)
@@ -122,57 +127,6 @@ const AdminRoutes = new Elysia({
 			params: t.Object({
 				image: t.String(),
 			}),
-		},
-	)
-	.get(
-		'/pending',
-		async ({ error }) => {
-			try {
-				// Get all the pending images from '/uploads/temp'
-				const glob = new Glob(`${Bun.env.FILES_PATH}/temp/*.webp`)
-				const files: { timestamp: number; name: string; fileName: string; fileNameWithoutLeading: string }[] = []
-
-				for await (const file of glob.scan('.')) {
-					const [timeStr, name] = file.split(IMAGE_SPLITER)
-					if (!timeStr || !name) continue
-
-					// Get only the timestamp from the string (uploads/temp/1730563395222)
-					const timestamp = Number.parseInt(timeStr.split('/').pop() || '0')
-
-					/* {
-					[0]   timeStr: "/apps/backend/uploads/temp/1730661050955",
-					[0]   name: "asdasd.webp",
-					[0]   timestamp: NaN,
-					[0]   newName: "asdasd",
-					[0]   fileName: "/apps/backend/uploads/temp/1730661050955-----asdasd.webp",
-					[0] } */
-
-					const newName = name.replace('.webp', '')
-					const fileName = file.split('/').pop() || ''
-					const fileNameWithoutLeading = fileName.replace(Bun.env.FILES_PATH as string, '')
-
-					console.log({
-						timeStr,
-						name,
-						timestamp,
-						newName: name.replace('.webp', ''),
-						fileName,
-						fileNameWithoutLeading,
-					})
-
-					files.push({ timestamp, name: newName, fileName, fileNameWithoutLeading })
-				}
-
-				return files
-			} catch (err) {
-				console.error(err)
-				return error(500, err)
-			}
-		},
-		{
-			detail: {
-				summary: 'Get all pending images',
-			},
 		},
 	)
 

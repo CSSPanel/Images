@@ -1,22 +1,34 @@
 'use client'
 
 import { AiOutlineCloudUpload } from 'react-icons/ai'
-import { useDropzone } from 'react-dropzone'
+import { useDropzone, type FileRejection } from 'react-dropzone'
 import { Loader } from '@mantine/core'
 import { useState } from 'react'
 import bytes from 'bytes'
+
+const MAX_FILES = 50
 
 const Dropzone = ({ uploadedFiles, setUploadedFiles, isUploading }: Props) => {
 	const [error, setError] = useState<string | null>(null)
 
 	const { getRootProps, getInputProps, isFocused, isDragAccept, isDragReject } = useDropzone({
 		accept: { 'image/*': [] },
-		maxFiles: 10,
+		maxFiles: MAX_FILES,
 		maxSize: bytes(process.env.NEXT_PUBLIC_MAXSIZE || '5MB'),
 		disabled: isUploading,
-		async onDrop(acceptedFiles: File[]) {
-			if (acceptedFiles.length === 0) return setError('No files were uploaded')
-			console.log({ acceptedFiles })
+		async onDrop(acceptedFiles: File[], fileRejections: FileRejection[]) {
+			if (acceptedFiles.length === 0) {
+				// Surface the real reason instead of a generic message. react-dropzone
+				// rejects the whole batch (every file gets `too-many-files`) when the
+				// selection exceeds maxFiles, so check that first.
+				const tooMany = fileRejections.some(r => r.errors.some(e => e.code === 'too-many-files'))
+				if (tooMany) return setError(`Too many files — up to ${MAX_FILES} at a time`)
+
+				const firstReason = fileRejections[0]?.errors[0]?.message
+				return setError(firstReason || 'No files were uploaded')
+			}
+
+			setError(null)
 
 			const newFiles = [
 				...acceptedFiles.filter(file => {
