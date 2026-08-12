@@ -88,14 +88,33 @@ const Upload = () => {
 	})
 	const replacing = conflicts.filter(wantsReplace).length
 
+	/**
+	 * Taken name, no replacement asked for. The server would answer `exists` without storing
+	 * anything, so there's no reason to send the bytes at all — base64 in a JSON body is the
+	 * expensive part of an upload, and a batch of duplicates would burn the request budget
+	 * for a known answer. They stay selected instead, one tick away from being submitted.
+	 */
+	const declinedNames = new Set(conflicts.filter(file => !wantsReplace(file)).map(file => file.originalName))
+	const sendable = uploadedFiles.filter(file => !declinedNames.has(file.originalName))
+
 	const handleUploadAll = async () => {
 		if (isUploading) return
+
+		if (sendable.length === 0) {
+			return setShowAlert({
+				message: `↷ ${declinedNames.size} skipped — ${
+					declinedNames.size === 1 ? 'that map already exists' : 'those maps already exist'
+				}. Tick “replace” on a card to submit anyway.`,
+				type: 'orange',
+			})
+		}
+
 		setIsUploading(true)
 
 		try {
 			// Should be sent as { files: [{ name: string, file: File, replace: boolean }] }
 			const entries: Entry[] = await Promise.all(
-				uploadedFiles.map(async source => ({
+				sendable.map(async source => ({
 					source,
 					body: {
 						file: await toBase64(source.file),
@@ -129,9 +148,11 @@ const Upload = () => {
 				setProgress(prev => ({ done: (prev?.done ?? 0) + batch.length, total: entries.length }))
 			}
 
-			// Keep whatever failed on screen; clear the rest.
-			setUploadedFiles(prev => prev.filter(file => failedFiles.has(file.originalName)))
-			if (failedFiles.size === 0) setReplaceChoices({})
+			// Keep whatever failed or was held back on screen; clear the rest, along with the
+			// replace answers that no longer belong to a selected file.
+			const kept = new Set(Array.from(failedFiles).concat(Array.from(declinedNames)))
+			setUploadedFiles(prev => prev.filter(file => kept.has(file.originalName)))
+			setReplaceChoices(prev => Object.fromEntries(Object.entries(prev).filter(([name]) => kept.has(name))))
 
 			const pending = results.filter(r => r.status === 'pending')
 			const exists = results.filter(r => r.status === 'exists')
@@ -154,7 +175,10 @@ const Upload = () => {
 						replacements ? ` (${replacements} as ${replacements === 1 ? 'a replacement' : 'replacements'})` : ''
 					}`,
 				})
-			if (exists.length) lines.push({ key: 'exists', text: `↷ ${exists.length} skipped (already exist)` })
+			// Held back before sending, plus anything the server refused because the name was
+			// taken between the check and the upload.
+			const skipped = declinedNames.size + exists.length
+			if (skipped) lines.push({ key: 'skipped', text: `↷ ${skipped} skipped (already exist)` })
 			for (const [reason, count] of Array.from(rejectedByReason)) {
 				lines.push({ key: `rejected-${reason}`, text: `✕ ${count} rejected — ${reason}` })
 			}
@@ -175,7 +199,12 @@ const Upload = () => {
 				) : (
 					'Images uploaded, please wait for a confirmation from the admins. Thank you!'
 				),
-				type: (rejected.length || failedFiles.size) && !pending.length ? 'red' : 'green',
+				type:
+					(rejected.length || failedFiles.size) && !pending.length
+						? 'red'
+						: !pending.length && skipped
+							? 'orange'
+							: 'green',
 			})
 		} catch (err) {
 			if (err instanceof Error) {
