@@ -1,9 +1,10 @@
 import Elysia, { t } from 'elysia'
 import isAdmin from '../../middlewares/isAdmin'
 import { IMAGE_SPLITER, PENDING_PREFIX } from '../../utils/constants/Files'
+import { compareResolution, readStoredMeta } from '../../utils/lib/imageMeta'
 import { normalizeMapName } from '../../utils/lib/mapName'
 import { DeleteR2File } from '../../utils/lib/r2/delete'
-import { copyObject, getObjectBuffer, listKeys } from '../../utils/lib/r2/get'
+import { copyObject, getObjectBuffer, listKeys, objectExists } from '../../utils/lib/r2/get'
 
 const AdminRoutes = new Elysia({
 	detail: {
@@ -46,6 +47,44 @@ const AdminRoutes = new Elysia({
 		},
 	)
 	.get(
+		'/:image/compare',
+		async ({ params: { image }, query: { name }, error }) => {
+			try {
+				const mapName = normalizeMapName(name)
+				if (!mapName) return error(400, 'Invalid name')
+
+				const [incoming, existing] = await Promise.all([
+					readStoredMeta(`${PENDING_PREFIX}${image}`),
+					readStoredMeta(`${mapName}.webp`),
+				])
+
+				if (!incoming) return error(404, 'Pending image not found')
+
+				return {
+					name: mapName,
+					incoming,
+					// Null when the name is free — nothing would be overwritten.
+					existing,
+					resolution: existing ? compareResolution(incoming, existing) : null,
+				}
+			} catch (err) {
+				console.error(err)
+				return error(500, err)
+			}
+		},
+		{
+			detail: {
+				summary: 'Compare a pending image against the map it would replace',
+			},
+			params: t.Object({
+				image: t.String(),
+			}),
+			query: t.Object({
+				name: t.String(),
+			}),
+		},
+	)
+	.get(
 		'/:image',
 		async ({ params: { image }, set, error }) => {
 			try {
@@ -76,19 +115,24 @@ const AdminRoutes = new Elysia({
 	)
 	.post(
 		'/:image',
-		async ({ params: { image }, body: { name }, error }) => {
+		async ({ params: { image }, body: { name, replace }, error }) => {
 			try {
 				const mapName = normalizeMapName(name)
-				if (!mapName) return new Response('Invalid name', { status: 400 })
+				if (!mapName) return error(400, 'Invalid name')
 
 				const src = `${PENDING_PREFIX}${image}`
+				const dest = `${mapName}.webp`
 
 				// Make sure the pending object still exists before approving.
-				const object = await getObjectBuffer(src)
-				if (!object) return new Response('Pending image not found', { status: 404 })
+				if (!(await objectExists(src))) return error(404, 'Pending image not found')
+
+				// Approving a taken name overwrites the live map for good, so it has to be
+				// asked for explicitly — this is what keeps a bulk approval from silently
+				// replacing existing maps.
+				if (!replace && (await objectExists(dest))) return error(409, 'Map already exists')
 
 				// Approve = copy to the bucket root as {name}.webp, then drop the pending object.
-				await copyObject(src, `${mapName}.webp`)
+				await copyObject(src, dest)
 				await DeleteR2File(src)
 
 				return true
@@ -99,10 +143,11 @@ const AdminRoutes = new Elysia({
 		},
 		{
 			detail: {
-				summary: 'Approve a pending image',
+				summary: 'Approve a pending image (pass replace to overwrite an existing map)',
 			},
 			body: t.Object({
 				name: t.String(),
+				replace: t.Optional(t.Boolean()),
 			}),
 			params: t.Object({
 				image: t.String(),

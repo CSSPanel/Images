@@ -1,51 +1,50 @@
 'use client'
 
-import { AiOutlineCloudUpload } from 'react-icons/ai'
-import { useDropzone, type FileRejection } from 'react-dropzone'
+import { readImageSize } from '@/utils/imageSize'
 import { Loader } from '@mantine/core'
-import { useState } from 'react'
 import bytes from 'bytes'
-
-const MAX_FILES = 50
+import { useState } from 'react'
+import { type FileRejection, useDropzone } from 'react-dropzone'
+import { AiOutlineCloudUpload } from 'react-icons/ai'
 
 const Dropzone = ({ uploadedFiles, setUploadedFiles, isUploading }: Props) => {
 	const [error, setError] = useState<string | null>(null)
 
 	const { getRootProps, getInputProps, isFocused, isDragAccept, isDragReject } = useDropzone({
 		accept: { 'image/*': [] },
-		maxFiles: MAX_FILES,
+		// No file-count limit (react-dropzone treats the absent option as unlimited).
 		maxSize: bytes(process.env.NEXT_PUBLIC_MAXSIZE || '5MB'),
 		disabled: isUploading,
 		async onDrop(acceptedFiles: File[], fileRejections: FileRejection[]) {
 			if (acceptedFiles.length === 0) {
-				// Surface the real reason instead of a generic message. react-dropzone
-				// rejects the whole batch (every file gets `too-many-files`) when the
-				// selection exceeds maxFiles, so check that first.
-				const tooMany = fileRejections.some(r => r.errors.some(e => e.code === 'too-many-files'))
-				if (tooMany) return setError(`Too many files — up to ${MAX_FILES} at a time`)
-
+				// Surface the real reason instead of a generic message.
 				const firstReason = fileRejections[0]?.errors[0]?.message
 				return setError(firstReason || 'No files were uploaded')
 			}
 
 			setError(null)
 
-			const newFiles = [
-				...acceptedFiles.filter(file => {
-					// Check for duplicates
-					const duplicate = uploadedFiles.find(f => f.name === file.name)
-					return !duplicate
-				}),
-			].map(file => {
-				const nameWithoutExt = file.name.split('.').slice(0, -1).join('.')
+			const newFiles = await Promise.all(
+				acceptedFiles
+					.filter(file => {
+						// Check for duplicates
+						const duplicate = uploadedFiles.find(f => f.name === file.name)
+						return !duplicate
+					})
+					.map(async file => {
+						const nameWithoutExt = file.name.split('.').slice(0, -1).join('.')
+						// Measured up front so the page can compare it against the stored map.
+						const size = await readImageSize(file)
 
-				return {
-					name: nameWithoutExt,
-					originalName: file.name,
-					file,
-					progress: 0,
-				}
-			})
+						return {
+							name: nameWithoutExt,
+							originalName: file.name,
+							file,
+							width: size?.width,
+							height: size?.height,
+						}
+					}),
+			)
 
 			setUploadedFiles(prev => [...prev, ...newFiles])
 		},
@@ -66,7 +65,7 @@ const Dropzone = ({ uploadedFiles, setUploadedFiles, isUploading }: Props) => {
 			) : isUploading ? (
 				<>
 					<Loader size={30} className="mb-2" />
-					<p className="text-base font-medium">Uplaoding files...</p>
+					<p className="text-base font-medium">Uploading files...</p>
 					<p className="text-sm">Please wait...</p>
 				</>
 			) : (
@@ -74,7 +73,7 @@ const Dropzone = ({ uploadedFiles, setUploadedFiles, isUploading }: Props) => {
 					<AiOutlineCloudUpload size="35" className="mb-2" />
 					<p className="text-base font-medium">{uploadedFiles.length > 0 ? 'Upload more files' : 'Upload files'}</p>
 					<p className="text-sm">
-						{uploadedFiles.length > 0 ? 'You can upload up to 10 files' : 'Drag and drop files here'}
+						{uploadedFiles.length > 0 ? 'Drop as many as you like' : 'Drag and drop files here'}
 					</p>
 				</>
 			)}
@@ -92,6 +91,9 @@ export interface IFile {
 	name: string
 	originalName: string
 	file: File
+	/** Pixel dimensions of the local file; absent when the browser couldn't decode it. */
+	width?: number
+	height?: number
 }
 
 export default Dropzone
