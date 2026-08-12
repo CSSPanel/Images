@@ -12,9 +12,52 @@ import Dropzone, { type IFile } from '../../UI/Dropzone'
 import UploadedFile from '../../UI/UploadedFile'
 import useNameCheck from './Hooks/useNameCheck'
 
+/** The array the upload endpoint accepts, and the file each entry came from. */
+type Entry = { source: IFile; body: { file: string; name: string; replace: boolean } }
+type UploadResults = NonNullable<Awaited<ReturnType<typeof eden.upload.index.post>>['data']>
+
+/**
+ * Base64 payload budget for a single request. Files are sent as base64 inside one JSON body,
+ * so a large selection has to be split across several requests: a proxy in front of the API
+ * will reject an oversized body (Cloudflare answers 413 past 100MB) before any per-file check
+ * gets to run. Keeping requests small also means a failure costs one chunk, not the whole
+ * selection.
+ */
+const BATCH_BASE64_BUDGET = 8 * 1024 * 1024
+
+/**
+ * Group entries into requests that stay under the budget. A single file larger than the
+ * budget still goes out — alone in its own request — because rejecting it is the server's
+ * call to make, per file, not something to silently drop here.
+ */
+const batchEntries = (entries: Entry[]): Entry[][] => {
+	const batches: Entry[][] = []
+	let current: Entry[] = []
+	let size = 0
+
+	for (const entry of entries) {
+		const entrySize = entry.body.file.length
+
+		if (current.length > 0 && size + entrySize > BATCH_BASE64_BUDGET) {
+			batches.push(current)
+			current = []
+			size = 0
+		}
+
+		current.push(entry)
+		size += entrySize
+	}
+
+	if (current.length > 0) batches.push(current)
+
+	return batches
+}
+
 const Upload = () => {
 	const [uploadedFiles, setUploadedFiles] = useState<IFile[]>([])
 	const [isUploading, setIsUploading] = useState(false)
+	// Files sent so far, across all requests of the current upload.
+	const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 	const [showAlert, setShowAlert] = useState<{
 		message: ReactNode
 		type: DefaultMantineColor
@@ -51,32 +94,48 @@ const Upload = () => {
 
 		try {
 			// Should be sent as { files: [{ name: string, file: File, replace: boolean }] }
-			const filesToUpload = await Promise.all(
-				uploadedFiles.map(async file => {
-					const base64 = await toBase64(file.file)
-
-					return {
-						file: base64,
-						name: file.name,
-						replace: wantsReplace(file),
-					}
-				}),
+			const entries: Entry[] = await Promise.all(
+				uploadedFiles.map(async source => ({
+					source,
+					body: {
+						file: await toBase64(source.file),
+						name: source.name,
+						replace: wantsReplace(source),
+					},
+				})),
 			)
 
-			const { data, error } = await eden.upload.index.post({
-				files: filesToUpload,
-			})
+			const batches = batchEntries(entries)
+			setProgress({ done: 0, total: entries.length })
 
-			if (error) {
-				return setShowAlert({ message: error.value, type: 'red' })
+			const results: UploadResults = []
+			// Files whose request never landed (network, proxy body limit, server error).
+			// They stay selected so the upload can be retried without re-picking them.
+			const failedByReason = new Map<string, number>()
+			const failedFiles = new Set<string>()
+
+			for (const batch of batches) {
+				const { data, error } = await eden.upload.index.post({ files: batch.map(entry => entry.body) })
+
+				if (error) {
+					const reason =
+						typeof error.value === 'string' && error.value ? error.value : `Upload failed (${error.status})`
+					failedByReason.set(reason, (failedByReason.get(reason) ?? 0) + batch.length)
+					for (const entry of batch) failedFiles.add(entry.source.originalName)
+				} else if (data) {
+					results.push(...data)
+				}
+
+				setProgress(prev => ({ done: (prev?.done ?? 0) + batch.length, total: entries.length }))
 			}
 
-			setUploadedFiles([])
-			setReplaceChoices({})
+			// Keep whatever failed on screen; clear the rest.
+			setUploadedFiles(prev => prev.filter(file => failedFiles.has(file.originalName)))
+			if (failedFiles.size === 0) setReplaceChoices({})
 
-			const pending = data?.filter(r => r.status === 'pending') ?? []
-			const exists = data?.filter(r => r.status === 'exists') ?? []
-			const rejected = data?.filter(r => r.status === 'rejected') ?? []
+			const pending = results.filter(r => r.status === 'pending')
+			const exists = results.filter(r => r.status === 'exists')
+			const rejected = results.filter(r => r.status === 'rejected')
 			const replacements = pending.filter(r => r.replaces).length
 
 			// Group rejections by reason so identical messages collapse into a single
@@ -99,6 +158,12 @@ const Upload = () => {
 			for (const [reason, count] of Array.from(rejectedByReason)) {
 				lines.push({ key: `rejected-${reason}`, text: `✕ ${count} rejected — ${reason}` })
 			}
+			for (const [reason, count] of Array.from(failedByReason)) {
+				lines.push({
+					key: `failed-${reason}`,
+					text: `⚠ ${count} didn't go through — ${reason}. Still selected, try again.`,
+				})
+			}
 
 			setShowAlert({
 				message: lines.length ? (
@@ -110,7 +175,7 @@ const Upload = () => {
 				) : (
 					'Images uploaded, please wait for a confirmation from the admins. Thank you!'
 				),
-				type: rejected.length && !pending.length ? 'red' : 'green',
+				type: (rejected.length || failedFiles.size) && !pending.length ? 'red' : 'green',
 			})
 		} catch (err) {
 			if (err instanceof Error) {
@@ -118,6 +183,7 @@ const Upload = () => {
 			}
 		}
 
+		setProgress(null)
 		setIsUploading(false)
 	}
 
@@ -148,7 +214,12 @@ const Upload = () => {
 			<p className="text-sm text-gray-400">
 				Drop map images below. Each upload is reviewed by an admin before it becomes available through the public API.
 			</p>
-			<Dropzone uploadedFiles={uploadedFiles} setUploadedFiles={setUploadedFiles} isUploading={isUploading} />
+			<Dropzone
+				uploadedFiles={uploadedFiles}
+				setUploadedFiles={setUploadedFiles}
+				isUploading={isUploading}
+				progress={progress}
+			/>
 			{showAlert && (
 				<Alert color={showAlert.type} variant="filled">
 					{showAlert.message}

@@ -81,14 +81,40 @@ Ignore the TS5101/TS5107 deprecation notices about `baseUrl` / `downlevelIterati
 
 ## Runtime limits & gotchas
 
-### Large upload batches can exceed the request body limit
+### `413 Content Too Large` / `502` on a big upload batch — and why the client chunks
 
-There is no cap on how many files you can queue in the uploader, but the whole batch is sent
-as a **single JSON POST with base64-encoded images**, and base64 inflates the payload by
-~33%. The server caps request bodies at 80 MB (`serve.maxRequestBodySize` in
-[apps/backend/app.ts](apps/backend/app.ts)); a batch past that is rejected wholesale rather
-than per-file. Per-file limits (10 MB decoded) are enforced inside the upload route. If you
-routinely push hundreds of images, upload in a few passes or raise the limit.
+Uploads are sent as **base64 inside a JSON body**, which inflates the payload by ~33%. There
+are two ceilings on the *request*, both hit before any per-file check runs, and neither of
+them reports itself as a per-file problem. Measured against production:
+
+| Request body | Response | Who rejected it                                            |
+| ------------ | -------- | ---------------------------------------------------------- |
+| ≤ 79 MB      | reaches the app | —                                                   |
+| ~85 MB       | `502`    | Bun's `serve.maxRequestBodySize` (80 MB, [app.ts](apps/backend/app.ts)) drops the connection and the proxy reports a bad gateway |
+| ≥ 99 MB      | `413`    | **Cloudflare** — 100 MB request cap on the free plan, the API is never reached |
+
+So `413` is not something you can fix in this codebase: it's the CDN in front of it. That's
+why the uploader **splits a selection into several requests** of ~8 MB of base64 each
+(`BATCH_BASE64_BUDGET` in [apps/frontend/app/(main)/upload/page.tsx](apps/frontend/app/(main)/upload/page.tsx))
+instead of sending one giant POST. Consequences worth knowing:
+
+- A file larger than the budget is still sent, **alone in its own request** — whether it's too
+  big is the server's per-file decision (`MAX_UPLOAD_BYTES`), not the batcher's.
+- If one chunk fails, the others still go through. The files from the failed chunk stay
+  selected in the UI so the upload can be retried without re-picking them.
+- If you write your own client against `POST /upload`, you have to do your own chunking —
+  the limits above are yours to respect.
+
+### Per-file limits vs. what ends up in the bucket
+
+Size enforcement is **per file**, not per batch, in two places: the dropzone rejects files
+over `NEXT_PUBLIC_MAXSIZE` (5 MB) client-side, and the upload route rejects individual files
+over `MAX_UPLOAD_BYTES` (10 MB decoded) with a reason while the rest of the batch continues.
+
+Note that a large *upload* never becomes a large *object*: the route always re-encodes to WebP
+at quality 90, capped at 2000px on the longest side, and stores only that. Real masters in the
+production bucket run ~27 KB–400 KB regardless of what was uploaded. Tightening the upload cap
+protects bandwidth and CPU, not storage.
 
 ### Uploads are processed sequentially
 

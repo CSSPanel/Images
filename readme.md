@@ -122,8 +122,8 @@ publicly available. Uploads are validated on arrival:
 
 | Rule                | Value                                                  |
 | ------------------- | ------------------------------------------------------ |
-| Files per batch     | unlimited — drop in as many as you like                |
-| Max file size       | 10 MB decoded (the web UI additionally caps at 5 MB)   |
+| Files per batch     | unlimited — sent in several requests behind the scenes  |
+| Max file size       | 10 MB decoded, per file (the web UI caps at 5 MB)       |
 | Minimum resolution  | 400px on the longest side — smaller is rejected        |
 | Duplicates          | flagged, not silently dropped — see below              |
 | Stored format       | WebP, quality 90, downscaled to max 2000px             |

@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { type FileRejection, useDropzone } from 'react-dropzone'
 import { AiOutlineCloudUpload } from 'react-icons/ai'
 
-const Dropzone = ({ uploadedFiles, setUploadedFiles, isUploading }: Props) => {
+const Dropzone = ({ uploadedFiles, setUploadedFiles, isUploading, progress }: Props) => {
 	const [error, setError] = useState<string | null>(null)
 
 	const { getRootProps, getInputProps, isFocused, isDragAccept, isDragReject } = useDropzone({
@@ -65,7 +65,9 @@ const Dropzone = ({ uploadedFiles, setUploadedFiles, isUploading }: Props) => {
 			) : isUploading ? (
 				<>
 					<Loader size={30} className="mb-2" />
-					<p className="text-base font-medium">Uploading files...</p>
+					<p className="text-base font-medium">
+						{progress ? `Uploading ${progress.done} of ${progress.total}...` : 'Uploading files...'}
+					</p>
 					<p className="text-sm">Please wait...</p>
 				</>
 			) : (
@@ -85,6 +87,8 @@ interface Props {
 	uploadedFiles: IFile[]
 	setUploadedFiles: React.Dispatch<React.SetStateAction<IFile[]>>
 	isUploading: boolean
+	/** Files sent so far — a large selection is uploaded in several requests. */
+	progress?: { done: number; total: number } | null
 }
 
 export interface IFile {
