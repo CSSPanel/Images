@@ -6,11 +6,28 @@ Point an `<img>` at one URL, pass a map name, and get back an optimized WebP res
 fly to whatever size you asked for. It exists so game-server websites, stats pages and
 [CSS-Panel](https://csspanel.dev) installations stop hotlinking map thumbnails from random
 third-party CDNs, dead image hosts and 2008-era forum attachments — and stop shipping a
-`maps/` folder of 200 unoptimized JPEGs with every install.
+`maps/` folder of unoptimized JPEGs with every install.
 
 - 🌐 **Hosted platform (recommended):** https://upload.csspanel.dev
 - 🔗 **API base URL:** `https://i.csspanel.dev`
-- 🗺️ **Maps available right now:** ~100 and growing (community-contributed, admin-reviewed)
+- 🗺️ **Maps available right now:** **5,310** and growing (community-contributed, admin-reviewed)
+
+### What's in the catalog
+
+The competitive pool is the small part. The bulk is the stuff no image host ever covered —
+thousands of surf and climb maps that your server rotation is actually full of:
+
+| Family                    | Maps  | Examples                                    |
+| ------------------------- | -----:| ------------------------------------------- |
+| Surf                      | 4,147 | `surf_kitsune`, `surf_1234`, `surf_004_fix` |
+| KZ / climb (`kz_ bkz_ skz_ xc_ vnl_`) | 1,063 | `kz_2fast`, `bkz_cakewalk`       |
+| Zombie escape (`ze_`)     |    47 | `ze_aot_trost`, `ze_atix_panic_p`           |
+| Defuse (`de_`)            |    16 | `de_dust2`, `de_mirage`, `de_ancient`       |
+| Bhop                      |    10 | `bhop_1derland`, `bhop_dunedash`            |
+| Aim / AWP                 |     7 | `awp_lego_2016`, `aim_redline`              |
+| Hostage, arms race, misc  |    20 | `cs_italy`, `ar_lunacy`, `2000_classics`    |
+
+Counts as of 13 Aug 2026 — `GET /maps` is always the live answer.
 
 ---
 
@@ -35,7 +52,7 @@ Browse what's available, build URLs interactively, and preview results at
 <img src="https://i.csspanel.dev/maps/de_inferno?width=800" />
 
 <!-- Fit inside a height instead -->
-<img src="https://i.csspanel.dev/maps/cs_office?height=200" />
+<img src="https://i.csspanel.dev/maps/surf_kitsune?height=200" />
 
 <!-- Unknown map? Serve a placeholder instead of a 404 -->
 <img src="https://i.csspanel.dev/maps/some_custom_map?width=400&fallback=de_dust2" />
@@ -104,18 +121,20 @@ Returns every available map as JSON:
 ```json
 [
 	{ "name": "de_dust2", "fileName": "de_dust2.webp" },
-	{ "name": "cs_office", "fileName": "cs_office.webp" }
+	{ "name": "surf_kitsune", "fileName": "surf_kitsune.webp" }
 ]
 ```
 
-Useful for building a map picker, or for pre-caching the list of maps you can rely on.
+Useful for building a map picker, or for pre-caching the list of maps you can rely on. With
+5,310 entries that's ~316 KB of JSON (~30 KB compressed) and a couple of seconds to build, so
+cache it on your side rather than calling it per page view.
 
 ---
 
 ## Contributing maps
 
 Missing a map? Upload it at **https://upload.csspanel.dev/upload** — drag in one or many
-images, rename them to the exact map name (`de_dust2`, `zm_dust_arena`, …), and submit.
+images, rename them to the exact map name (`de_dust2`, `surf_kitsune`, …), and submit.
 
 Every upload goes into a **pending review queue**; an admin approves it before it becomes
 publicly available. Uploads are validated on arrival:
@@ -242,9 +261,9 @@ There's no database — the bucket *is* the state:
 ```
 your-bucket/
 ├── de_dust2.webp        ← approved, publicly servable
-├── cs_office.webp
+├── surf_kitsune.webp
 └── pending/
-    └── 1735212345678-----zm_dust_arena.webp   ← awaiting review ({timestamp}-----{name}.webp)
+    └── 1735212345678-----surf_mesa_final.webp   ← awaiting review ({timestamp}-----{name}.webp)
 ```
 
 Approved maps live at the root; the listing endpoint uses a `/` delimiter so `pending/`
@@ -264,14 +283,6 @@ All the size/quality knobs are in
 | `MAX_SERVE_DIMENSION`   | 2000    | Clamp for requested `width`/`height`          |
 | `DEFAULT_WIDTH`         | 400     | Used when no size is requested                |
 | `SERVE_WEBP_QUALITY`    | 82      | Quality of the on-the-fly resized output      |
-
-### Deploying
-
-Before you ship it: **[known-issues.md](known-issues.md)** collects the deployment traps and
-runtime caveats — two-service setup, why `API` must be rebuilt rather than restarted, the
-admin-cookie domain scope that causes `401`s in production, frozen lockfiles, `sharp` native
-rebuilds, and where type errors actually surface. Reading it will save you a few confused
-build failures.
 
 ### Project structure
 
