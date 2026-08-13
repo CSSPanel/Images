@@ -18,20 +18,30 @@ and point the frontend's `API` at the backend's public URL. Production runs
 value into the bundle at build time**. Changing the environment variable on a running
 container does nothing — you have to rebuild the frontend.
 
-### Admin login returns 401 in production
+### The session cookie, and what it needs from your config
 
-`POST /auth/login` sets a `secure` JWT cookie scoped to `.{WEBSITE_URL host}` (see
-[apps/backend/utils/constants/Domain.ts](apps/backend/utils/constants/Domain.ts)). For the
-browser to send that cookie to the API, the API must live on that domain or a subdomain of
-it.
+`POST /auth/login` sets the JWT as an `HttpOnly`, `SameSite=Lax` cookie, `Secure` in
+production, with a 90-day expiry that `GET /auth/me` slides forward on every check (see
+[apps/backend/utils/lib/authCookie.ts](apps/backend/utils/lib/authCookie.ts)).
 
-So set `WEBSITE_URL` to the **shared parent domain** (e.g. `csspanel.dev`), not the frontend
-subdomain — with `WEBSITE_URL=upload.csspanel.dev` the cookie is scoped to
-`.upload.csspanel.dev` and never reaches `i.csspanel.dev`, and every admin request comes back
-`401`.
+It is scoped to `.{WEBSITE_URL host}` when that is a real parent domain of the API's own
+host, and is otherwise left **host-only** on whichever host served the request. A host-only
+cookie is all this app needs — the cookie only ever travels back to the API that issued it —
+so `WEBSITE_URL` being wrong or unset no longer breaks login. Setting it to the shared parent
+(`csspanel.dev`) is still the tidier choice if the frontend and API are on sibling subdomains.
 
-Related: the cookie is `secure`, so admin login only works over HTTPS (localhost is exempt,
-being treated as a secure context by browsers).
+Two things do still matter:
+
+- **`Secure` in production.** `NODE_ENV=production` makes the cookie `Secure`, so a
+  production build served over plain HTTP will never keep an admin logged in. Local `dev` is
+  not `NODE_ENV=production`, so it sends the cookie without `Secure` and works over
+  `http://localhost` in every browser — Safari included, which unlike Chrome refuses `Secure`
+  cookies from `http://` even on localhost.
+- **`SameSite=Lax` assumes a shared registrable domain.** `upload.csspanel.dev` +
+  `i.csspanel.dev` are same-site, so the cookie flows. If you deploy the frontend and the API
+  to genuinely different sites (say Vercel + Railway), set `COOKIE_SAMESITE=none` — which
+  forces `Secure`, so that combination is HTTPS-only. Note that admin image previews are
+  plain `<img src>` requests to the API and rely on the same cookie.
 
 ### Pin your dependencies / use a frozen lockfile
 
@@ -141,6 +151,20 @@ Auth is a single `ADMIN_USERNAME` / `ADMIN_PASSWORD` pair compared in plaintext,
 the JWT payload, and re-checked against the env on every request. Changing either value
 invalidates all existing sessions by design. There are no roles, no multiple users, and no
 rate limiting on `/auth/login` — put it behind your own protection if that matters to you.
+
+Because the password travels inside the JWT, the cookie is `HttpOnly` — page scripts can't
+read it. Set `SECRET` in the backend env: it falls back to `"abcd"`, and anyone who knows
+that can mint a valid admin token.
+
+### `isAdmin` has to propagate its hook, or the admin API is public
+
+Elysia hooks are local to the instance that declares them. `isAdmin` declares no routes of
+its own, so without the `.as('plugin')` at the end of
+[apps/backend/middlewares/isAdmin.ts](apps/backend/middlewares/isAdmin.ts) its check never
+runs against the routes that `use()` it and every `/admin/*` endpoint — list, approve,
+delete — answers unauthenticated callers. It must also be an `onBeforeHandle` rather than a
+`derive`: a `derive` return value is merged into the context, so returning `error(401)` from
+one leaves an error object in scope and runs the handler anyway.
 
 ### Uploads are unauthenticated
 

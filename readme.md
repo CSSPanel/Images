@@ -177,6 +177,10 @@ WEBSITE_URL   = "localhost:3000"   # frontend origin; also where GET / redirects
 API_PORT      = 5555               # defaults to 6000 if unset
 SECRET        = "change-me"        # JWT signing secret (defaults to "abcd" — don't ship that)
 
+# Only if the frontend and the API are on different registrable domains.
+# Defaults to "lax"; "none" forces Secure, so it needs HTTPS on both ends.
+COOKIE_SAMESITE = "none"
+
 ADMIN_USERNAME = "admin"           # the single admin account
 ADMIN_PASSWORD = "admin"
 

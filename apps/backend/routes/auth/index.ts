@@ -1,5 +1,5 @@
 import Elysia, { error, t } from 'elysia'
-import { WEBSITE_URL_WITHOUT_SSL } from '../../utils/constants/Domain'
+import { clearAuthCookie, setAuthCookie } from '../../utils/lib/authCookie'
 import jtwSetup from '../../utils/lib/jwt'
 
 const AuthRoutes = new Elysia({
@@ -10,24 +10,13 @@ const AuthRoutes = new Elysia({
 	.use(jtwSetup)
 	.post(
 		'/login',
-		async ({ body: { username, password }, jwt, cookie: { auth } }) => {
+		async ({ body: { username, password }, jwt, cookie: { auth }, request }) => {
 			const envUsername = process.env.ADMIN_USERNAME
 			const envPassword = process.env.ADMIN_PASSWORD
 
 			if (username !== envUsername || password !== envPassword) return error(401, 'Unauthorized')
 
-			// Generate JWT token
-			auth.set({
-				value: await jwt.sign({ username, password }),
-				path: '/',
-				// sameSite: 'none',
-				// httpOnly: false,
-				// 90 days
-				domain: `.${WEBSITE_URL_WITHOUT_SSL}`,
-				expires: new Date(Date.now() + 30 * 86400 * 1000),
-				maxAge: 90 * 86400,
-				secure: true,
-			})
+			setAuthCookie(auth, request, await jwt.sign({ username, password }))
 
 			return true
 		},
@@ -43,16 +32,23 @@ const AuthRoutes = new Elysia({
 	)
 	.get(
 		'/me',
-		async ({ jwt, cookie: { auth } }) => {
-			const isLoggedIn = await jwt.verify(auth.value)
+		async ({ jwt, cookie: { auth }, request }) => {
+			const token = auth.value
+			if (!token) return error(401, 'Unauthorized')
+
+			const isLoggedIn = await jwt.verify(token)
 			if (!isLoggedIn) return error(401, 'Unauthorized')
 
 			const { username, password } = isLoggedIn
 
 			if (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD) {
-				auth.set({ value: '', expires: new Date(0) })
+				clearAuthCookie(auth, request)
 				return error(401, 'Unauthorized')
 			}
+
+			// The frontend polls this on every window focus, so it doubles as the
+			// session refresh: an admin who keeps using the panel never ages out.
+			setAuthCookie(auth, request, token)
 
 			return true
 		},
